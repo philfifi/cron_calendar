@@ -1,0 +1,47 @@
+#!/usr/bin/python2
+# -*- coding: utf-8 -*-
+#
+#  Copyright (C) 2012, Philippe LUC (pluc at pluc.fr)
+#
+#  Homepage: http://www.pluc.fr/
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+import os
+import sys
+from cron_calendar_lib import CronCalendar
+import ConfigParser
+
+
+
+
+
+
+def main(argv):
+
+    conf = ConfigParser.ConfigParser()
+    #CONFIGURATION FILE LOCATION **********************************
+    #All of them are used. Not existing files ignored. Later item overrides former.
+    conf_files = ['/etc/cron_calendar.conf', os.path.join(os.environ['HOME'], '.cron_calendar.rc')]
+    read = conf.read(conf_files)
+    if not read:
+        sys.exit("No configuration found.\nTried : %s" % conf_files)
+    app = CronCalendar(conf=conf,
+                       verbose_level=1)
+    app.run()
+
+
+if __name__ == "__main__":
+    main(sys.argv)
