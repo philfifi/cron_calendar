@@ -24,22 +24,41 @@ import sys
 from cron_calendar_lib import CronCalendar
 import ConfigParser
 
+def get_args(argv):
+    import argparse
+
+    # create the top-level parser
+    parser = argparse.ArgumentParser(description='Script ')
+
+    parser.add_argument('-v', '--verbose', action="count",
+                        dest="verbose_level",
+                        help="Increase verbosity")
+
+    parser.add_argument('-c', '--conf', action="store",
+                        dest="conf",
+                        help="Provide the path to an alternate configuration file.")
 
 
 
-
+    return parser.parse_args(argv[1:])
 
 def main(argv):
+
+    args = get_args(argv)
 
     conf = ConfigParser.ConfigParser()
     #CONFIGURATION FILE LOCATION **********************************
     #All of them are used. Not existing files ignored. Later item overrides former.
-    conf_files = ['/etc/cron_calendar.conf', os.path.join(os.environ['HOME'], '.cron_calendar.rc')]
+    if args.conf:
+        conf_files = [args.conf]
+    else:
+        conf_files = ['/etc/cron_calendar.conf', os.path.join(os.environ['HOME'], '.cron_calendar.rc')]
     read = conf.read(conf_files)
     if not read:
         sys.exit("No configuration found.\nTried : %s" % conf_files)
+
     app = CronCalendar(conf=conf,
-                       verbose_level=1)
+                       verbose_level=args.verbose_level)
     app.run()
 
 
