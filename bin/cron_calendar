@@ -23,6 +23,7 @@ import os
 import sys
 from cron_calendar_lib import CronCalendar
 import ConfigParser
+import signal
 
 def get_args(argv):
     import argparse
@@ -43,6 +44,9 @@ def get_args(argv):
     return parser.parse_args(argv[1:])
 
 def main(argv):
+    # Make sure the process is killed if last more than 50s.
+    # Means that something badly wrong happened.
+    signal.alarm(50)
 
     args = get_args(argv)
 
