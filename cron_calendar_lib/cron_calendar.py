@@ -45,17 +45,9 @@ class AtApi:
             raise AtError(p.stdout.readlines())
 
 
-def get_RFC3339(dt):
+def get_RFC3339(dt_utc):
     "Returns a string of the correct format given a datetime object"
-    if time.daylight != 0:
-        tz_offset = time.altzone
-    else:
-        tz_offset = time.timezone
-    tz_str = (tz_offset >= 0) and "-" or "+"
-    tz_offset = abs(tz_offset) / 60
-    tz_str += "%02d:%02d" % (tz_offset / 60, tz_offset % 60)
-
-    return dt.strftime("%Y-%m-%dT%H:%M:%S") + tz_str
+    return dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def from_RFC3339(s):
     "Returns a datetime object from the given string"
@@ -104,23 +96,23 @@ class CronCalendar:
 
         return service
 
-    def __get_query_dt(self):
+    def __get_query_utc_dt(self):
         self.shelve_dict = shelve.open(os.path.expanduser(self.conf.get("storage", "shelve_file")))
 
-        dt_now = datetime.now()
-        dt_now -= timedelta(seconds=dt_now.second, # Make it aligned to minutes starts
-                            microseconds=dt_now.microsecond)
+        dt_utcnow = datetime.utcnow()
+        dt_utcnow -= timedelta(seconds=dt_utcnow.second, # Make it aligned to minutes starts
+                               microseconds=dt_utcnow.microsecond)
 
         # Make sure we don't query twice the same time range.
-        if "last_time_max" in self.shelve_dict:
-            dt_time_min = max(dt_now,
-                              self.shelve_dict["last_time_max"])
+        if "last_utctime_max" in self.shelve_dict:
+            dt_utctime_min = max(dt_utcnow,
+                              self.shelve_dict["last_utctime_max"])
         else:
-            dt_time_min = dt_now
+            dt_utctime_min = dt_utcnow
 
-        dt_time_max = dt_now + timedelta(minutes=self.conf.getint("general", "advance_minute"))
+        dt_utctime_max = dt_utcnow + timedelta(minutes=self.conf.getint("general", "advance_minute"))
 
-        return dt_time_min, dt_time_max
+        return dt_utctime_min, dt_utctime_max
 
     def __program_at(self,
                      res,
@@ -160,7 +152,7 @@ class CronCalendar:
         # Connect to google API
         self.service = self.get_calendar_service()
 
-        dt_time_min, dt_time_max = self.__get_query_dt()
+        dt_time_min, dt_time_max = self.__get_query_utc_dt()
 
         if dt_time_min == dt_time_max:
             print "Nothing to query"
@@ -189,7 +181,5 @@ class CronCalendar:
                               dt_time_max)
 
             # If we are here, programmation went well, and we can update the range
-            self.shelve_dict["last_time_min"] = dt_time_min
-            self.shelve_dict["last_time_max"] = dt_time_max
-
-
+            self.shelve_dict["last_utctime_min"] = dt_time_min
+            self.shelve_dict["last_utctime_max"] = dt_time_max
