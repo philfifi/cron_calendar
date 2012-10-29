@@ -39,6 +39,9 @@ def get_args(argv):
                         dest="conf",
                         help="Provide the path to an alternate configuration file.")
 
+    parser.add_argument('--dryrun', action="store_true",
+                        help="Query the calendar but doesn't program the at daemon.")
+
 
 
     return parser.parse_args(argv[1:])
@@ -62,7 +65,8 @@ def main(argv):
         sys.exit("No configuration found.\nTried : %s" % conf_files)
 
     app = CronCalendar(conf=conf,
-                       verbose_level=args.verbose_level)
+                       verbose_level=args.verbose_level,
+                       dryrun=args.dryrun)
     app.run()
 
 

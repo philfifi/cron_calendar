@@ -72,9 +72,11 @@ class CronCalendar:
 
     def __init__(self,
                  conf,
-                 verbose_level=0):
+                 verbose_level=0,
+                 dryrun=False):
         self.conf = conf
         self.verbose_level = verbose_level
+        self.dryrun = dryrun
 
     def get_calendar_service(self):
         " Connect to google calendar"
@@ -149,7 +151,8 @@ class CronCalendar:
                         continue
                     if self.verbose_level >= 1:
                         print "Programming from [%s] at %s command: [%s]" % (summary_str, dt, cmd)
-                    at.run_at(dt, cmd)
+                    if not self.dryrun:
+                        at.run_at(dt, cmd)
 
 
     def run(self):
