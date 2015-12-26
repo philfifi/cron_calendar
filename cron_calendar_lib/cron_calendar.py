@@ -13,7 +13,7 @@ import httplib2
 from apiclient.discovery import build
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
-from oauth2client.tools import run
+from oauth2client.tools import run_flow
 import gflags
 
 
@@ -85,7 +85,7 @@ class CronCalendar:
             user_agent='CronCalendar/1.0')
 
         if credentials is None or credentials.invalid == True:
-            credentials = run(flow, storage)
+            credentials = run_flow(flow, storage)
 
         # Create an httplib2.Http object to handle our HTTP requests and authorize it
         # with our good Credentials.
