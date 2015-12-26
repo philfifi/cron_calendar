@@ -152,14 +152,14 @@ class CronCalendar:
         # Connect to google API
         self.service = self.get_calendar_service()
 
-        dt_time_min, dt_time_max = self.__get_query_utc_dt()
+        dt_utctime_min, dt_utctime_max = self.__get_query_utc_dt()
 
-        if dt_time_min == dt_time_max:
+        if dt_utctime_min == dt_utctime_max:
             print "Nothing to query"
         else:
 
-            time_min = get_RFC3339(dt_time_min)
-            time_max = get_RFC3339(dt_time_max)
+            time_min = get_RFC3339(dt_utctime_min)
+            time_max = get_RFC3339(dt_utctime_max)
 
             if self.verbose_level >= 1:
                 print "Querying calendar from", time_min, "to", time_max
@@ -177,9 +177,9 @@ class CronCalendar:
                 pprint(res)
 
             self.__program_at(res,
-                              dt_time_min,
-                              dt_time_max)
+                              dt_utctime_min,
+                              dt_utctime_max)
 
             # If we are here, programmation went well, and we can update the range
-            self.shelve_dict["last_utctime_min"] = dt_time_min
-            self.shelve_dict["last_utctime_max"] = dt_time_max
+            self.shelve_dict["last_utctime_min"] = dt_utctime_min
+            self.shelve_dict["last_utctime_max"] = dt_utctime_max
