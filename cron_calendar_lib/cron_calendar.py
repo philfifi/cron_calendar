@@ -77,7 +77,7 @@ class CronCalendar:
 
 
         FLAGS = gflags.FLAGS
-        FLAGS.auth_local_webserver = False
+        FLAGS.noauth_local_webserver = True
         flow = OAuth2WebServerFlow(
             client_id=self.conf.get("google_api", "client_id"),
             client_secret=self.conf.get("google_api", "client_secret"),
