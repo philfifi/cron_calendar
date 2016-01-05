@@ -54,6 +54,17 @@ def from_RFC3339(s):
     dt = datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
     return dt
 
+def utc_from_RFC3339(s):
+    "Returns a datetime object from the given string"
+    dt = datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
+    assert s[22] == ":"
+    utcoffset = timedelta(hours=int(s[20:22]), minutes=int(s[23:25]))
+    sig = s[19]
+    assert sig in "+-"
+    if sig == "+":
+        return dt - utcoffset
+    else:
+        return dt + utcoffset
 
 class CronCalendar:
     """
@@ -116,8 +127,8 @@ class CronCalendar:
 
     def __program_at(self,
                      res,
-                     dt_time_min,
-                     dt_time_max):
+                     dt_utctime_min,
+                     dt_utctime_max):
         " From the raw results from the google api, program AT"
         at = AtApi()
 
@@ -125,7 +136,8 @@ class CronCalendar:
             for event in res["items"]:
                 start_str = event["start"]["dateTime"]
                 dt = from_RFC3339(start_str)
-                if not (dt_time_min <= dt < dt_time_max):
+                dt_utc = utc_from_RFC3339(start_str)
+                if not (dt_utctime_min <= dt_utc < dt_utctime_max):
                     if self.verbose_level >= 1:
                         print "Start time not inside boundaries"
                     continue
