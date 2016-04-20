@@ -93,7 +93,7 @@ class CronCalendar:
             user_agent='CronCalendar/1.0')
 
         if credentials is None or credentials.invalid == True:
-            flags = tools.argparser.parse_args(args=[])
+            flags = tools.argparser.parse_args(args=["--noauth_local_webserver"])
             credentials = run_flow(flow, storage, flags)
 
         # Create an httplib2.Http object to handle our HTTP requests and authorize it
