@@ -14,8 +14,7 @@ from apiclient.discovery import build
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.tools import run_flow
-import gflags
-
+from oauth2client import tools
 
 
 class AtError(Exception):
@@ -87,8 +86,6 @@ class CronCalendar:
         credentials = storage.get()
 
 
-#        FLAGS = gflags.FLAGS
-#        FLAGS.DEFINE_bool("auth_local_webserver", False)
         flow = OAuth2WebServerFlow(
             client_id=self.conf.get("google_api", "client_id"),
             client_secret=self.conf.get("google_api", "client_secret"),
@@ -96,7 +93,8 @@ class CronCalendar:
             user_agent='CronCalendar/1.0')
 
         if credentials is None or credentials.invalid == True:
-            credentials = run_flow(flow, storage)
+            flags = tools.argparser.parse_args(args=[])
+            credentials = run_flow(flow, storage, flags)
 
         # Create an httplib2.Http object to handle our HTTP requests and authorize it
         # with our good Credentials.
