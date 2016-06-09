@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta
 import time
 import subprocess
 import shelve
+import re
 
 import httplib2
 
@@ -71,6 +73,7 @@ class CronCalendar:
     program AT daemon to execute commands from the 'description' field
 
     """
+    tokenMatchRegExp=r"""^ \s* {} (?P<cmd_match>.+)"""
 
     def __init__(self,
                  conf,
@@ -123,6 +126,66 @@ class CronCalendar:
 
         return dt_utctime_min, dt_utctime_max
 
+    def __match_stop(self, at, event, dt_utctime_min, dt_utctime_max):
+        " Try to match Stop token in the decription field of event, if match programm At with command, return True, else False "
+        cmdToken = self.conf.get("general", "stop_token")
+        if self.verbose_level >= 1:
+            print "--match_stop with token: {}".format(cmdToken)
+        re_cmd = re.compile(self.tokenMatchRegExp.format(cmdToken), re.VERBOSE|re.IGNORECASE)
+        return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "end", re_cmd)
+
+    def __match_start(self, at, event, dt_utctime_min, dt_utctime_max):
+        " Try to match Start token in the decription field of event, if match programm At with command, return True, else False "
+        cmdToken = self.conf.get("general", "start_token")
+        if self.verbose_level >= 1:
+            print "--match_start with token: {}".format(cmdToken)
+        re_cmd = re.compile(self.tokenMatchRegExp.format(cmdToken), re.VERBOSE|re.IGNORECASE)
+        return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "start", re_cmd)
+
+    def __match_none(self, at, event, dt_utctime_min, dt_utctime_max):
+        if self.verbose_level >= 1:
+            print "--match_none"
+        "Run whatever is in the description field of event, if match programm At with command, return True, else False "
+        re_cmd = re.compile(self.tokenMatchRegExp.format(""), re.VERBOSE|re.IGNORECASE)
+        return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "start", re_cmd)
+
+    def __match_cmd(self,
+                    at,
+                    event,
+                    dt_utctime_min,
+                    dt_utctime_max,
+                    cmd, reg_comp):
+        # Start Event is in the range
+        cmd_str = event[cmd]["dateTime"]
+        cmd_dt = from_RFC3339(cmd_str)
+        cmd_dt_utc = utc_from_RFC3339(cmd_str)
+        if not (dt_utctime_min <= cmd_dt_utc < dt_utctime_max):
+            if self.verbose_level >= 1:
+                print "{} time not inside boundaries".format(cmd)
+        else:
+            description_str = event.get("description")
+            summary_str = event.get("summary")
+            if not description_str:
+                if self.verbose_level >= 1:
+                    print "No command for [{}] at {}".format(summary_str, str(cmd_dt))
+            else:
+                for line in description_str.split("\n"):
+                    match = reg_comp.match(line)
+                    if match:
+                        if self.verbose_level >= 1:
+                            print "Line: '{}' match".format(line)
+                        if not match.group('cmd_match'):
+                            continue
+                        if self.verbose_level >= 1:
+                            print "{}: Programming from [{}] at {} command: [{}]".format(cmd,summary_str, cmd_dt, match.group('cmd_match'))
+                        if not self.dryrun:
+                            at.run_at(cmd_dt, match.group('cmd_match'))
+                        return True
+                    else:
+                        if self.verbose_level >= 1:
+                            print "Line: '{}' doesn't match".format(line)
+        return False
+
     def __program_at(self,
                      res,
                      dt_utctime_min,
@@ -132,30 +195,10 @@ class CronCalendar:
 
         if "items" in res:
             for event in res["items"]:
-                start_str = event["start"]["dateTime"]
-                dt = from_RFC3339(start_str)
-                dt_utc = utc_from_RFC3339(start_str)
-                if not (dt_utctime_min <= dt_utc < dt_utctime_max):
-                    if self.verbose_level >= 1:
-                        print "Start time not inside boundaries"
-                    continue
-
-                description_str = event.get("description")
-                summary_str = event.get("summary")
-                if not description_str:
-                    if self.verbose_level >= 1:
-                        print "No command for [%s] at %s" % (summary_str, dt)
-                    continue
-
-                for line in description_str.split("\n"):
-                    cmd = line.strip()
-                    if not cmd:
-                        continue
-                    if self.verbose_level >= 1:
-                        print "Programming from [%s] at %s command: [%s]" % (summary_str, dt, cmd)
-                    if not self.dryrun:
-                        at.run_at(dt, cmd)
-
+                token_found  = self.__match_start(at, event, dt_utctime_min, dt_utctime_max)
+                token_found |= self.__match_stop(at, event, dt_utctime_min, dt_utctime_max)
+                if not token_found:
+                    self.__match_none(at, event, dt_utctime_min, dt_utctime_max)
 
     def run(self):
 
