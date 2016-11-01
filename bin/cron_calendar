@@ -24,6 +24,7 @@ import sys
 from cron_calendar_lib import CronCalendar
 import ConfigParser
 import signal
+import logging, logging.handlers
 
 def get_args(argv):
     import argparse
@@ -39,12 +40,44 @@ def get_args(argv):
                         dest="conf",
                         help="Provide the path to an alternate configuration file.")
 
-    parser.add_argument('--dryrun', action="store_true",
+    parser.add_argument('-d','--dryrun', action="store_true",
+                        dest="dryrun",
                         help="Query the calendar but doesn't program the at daemon.")
 
-
+    parser.add_argument('-l','--log', action="store_true",
+                        dest="log",
+                        help="Output will be logged in file(log file path is defined in config file )")
 
     return parser.parse_args(argv[1:])
+
+def create_logger(debug, loggername, log_file_enable, filename):
+    # Logger
+    logger = logging.getLogger(loggername)
+    logger.setLevel(logging.DEBUG)  # Only allow debug
+    formatter = logging.Formatter('%(name)s - %(levelname)s - %(funcName)s - %(message)s')
+
+    # STREAM CHANNEL - STDOUT
+    stream = logging.StreamHandler()
+    stream.setFormatter(formatter)
+    if debug:
+        stream.setLevel(logging.DEBUG)
+    else:
+        stream.setLevel(logging.INFO)
+    logger.addHandler(stream)
+
+    # ROTATING CHANNEL
+    if log_file_enable:
+        rf = logging.handlers.RotatingFileHandler(filename, mode='a', maxBytes=1000000, backupCount=5)
+        formatter_file = logging.Formatter('%(name)s - %(levelname)s - %(asctime)-15s - %(funcName)s - %(message)s')
+        rf.setFormatter(formatter_file)
+        if debug:
+            rf.setLevel(logging.DEBUG)
+        else:
+            rf.setLevel(logging.INFO)
+        logger.addHandler(rf)
+
+    return logger
+
 
 def main(argv):
     # Make sure the process is killed if last more than 50s.
@@ -64,7 +97,11 @@ def main(argv):
     if not read:
         sys.exit("No configuration found.\nTried : %s" % conf_files)
 
+    logging_filename=conf.get("storage", "log_file")
+    logger = create_logger((args.verbose_level>=1), 'CronCalendar', args.log, logging_filename)
+
     app = CronCalendar(conf=conf,
+                       logger=logger,
                        verbose_level=args.verbose_level,
                        dryrun=args.dryrun)
     app.run()

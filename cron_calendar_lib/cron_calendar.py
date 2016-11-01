@@ -77,9 +77,11 @@ class CronCalendar:
 
     def __init__(self,
                  conf,
+                 logger,
                  verbose_level=0,
                  dryrun=False):
         self.conf = conf
+        self.logger = logger
         self.verbose_level = verbose_level
         self.dryrun = dryrun
 
@@ -129,22 +131,19 @@ class CronCalendar:
     def __match_stop(self, at, event, dt_utctime_min, dt_utctime_max):
         " Try to match Stop token in the decription field of event, if match programm At with command, return True, else False "
         cmdToken = self.conf.get("general", "stop_token")
-        if self.verbose_level >= 1:
-            print "--match_stop with token: {}".format(cmdToken)
+        logger.debug("--match_stop with token: {}".format(cmdToken))
         re_cmd = re.compile(self.tokenMatchRegExp.format(cmdToken), re.VERBOSE|re.IGNORECASE)
         return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "end", re_cmd)
 
     def __match_start(self, at, event, dt_utctime_min, dt_utctime_max):
         " Try to match Start token in the decription field of event, if match programm At with command, return True, else False "
         cmdToken = self.conf.get("general", "start_token")
-        if self.verbose_level >= 1:
-            print "--match_start with token: {}".format(cmdToken)
+        logger.debug("--match_start with token: {}".format(cmdToken))
         re_cmd = re.compile(self.tokenMatchRegExp.format(cmdToken), re.VERBOSE|re.IGNORECASE)
         return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "start", re_cmd)
 
     def __match_none(self, at, event, dt_utctime_min, dt_utctime_max):
-        if self.verbose_level >= 1:
-            print "--match_none"
+        logger.debug("--match_none")
         "Run whatever is in the description field of event, if match programm At with command, return True, else False "
         re_cmd = re.compile(self.tokenMatchRegExp.format(""), re.VERBOSE|re.IGNORECASE)
         return self.__match_cmd(at, event, dt_utctime_min, dt_utctime_max, "start", re_cmd)
@@ -166,8 +165,7 @@ class CronCalendar:
             description_str = event.get("description")
             summary_str = event.get("summary")
             if not description_str:
-                if self.verbose_level >= 1:
-                    print "No command for [{}] at {}".format(summary_str, str(cmd_dt))
+                logger.debug("No command for [{}] at {}".format(summary_str, str(cmd_dt)))
             else:
                 for line in description_str.split("\n"):
                     match = reg_comp.match(line)
@@ -182,8 +180,7 @@ class CronCalendar:
                             at.run_at(cmd_dt, match.group('cmd_match'))
                         return True
                     else:
-                        if self.verbose_level >= 1:
-                            print "Line: '{}' doesn't match".format(line)
+                        logger.debug("Line: '{}' doesn't match".format(line))
         return False
 
     def __program_at(self,
@@ -208,14 +205,13 @@ class CronCalendar:
         dt_utctime_min, dt_utctime_max = self.__get_query_utc_dt()
 
         if dt_utctime_min == dt_utctime_max:
-            print "Nothing to query"
+            logger.info("Nothing to query")
         else:
 
             time_min = get_RFC3339(dt_utctime_min)
             time_max = get_RFC3339(dt_utctime_max)
 
-            if self.verbose_level >= 1:
-                print "Querying calendar from", time_min, "to", time_max
+            logger.debug("Querying calendar from", time_min, "to", time_max)
             req = self.service.events().list(calendarId=self.conf.get("general", "calendar_id"),
                                              singleEvents=True,  # Make sure regular events are expanded
                                              orderBy="startTime",
