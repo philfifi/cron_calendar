@@ -158,9 +158,10 @@ class CronCalendar:
         cmd_str = event[cmd]["dateTime"]
         cmd_dt = from_RFC3339(cmd_str)
         cmd_dt_utc = utc_from_RFC3339(cmd_str)
-        if not (dt_utctime_min <= cmd_dt_utc < dt_utctime_max):
-            if self.verbose_level >= 1:
-                print "{} time not inside boundaries".format(cmd)
+        if (cmd == "start") and not(dt_utctime_min <= cmd_dt_utc < dt_utctime_max):
+            logger.debug("{} time not inside boundaries(min<=dt<max)".format(cmd))
+        elif (cmd == "end") and not (dt_utctime_min < cmd_dt_utc <= dt_utctime_max):
+            logger.debug("{} time not inside boundaries(min<dt<=max)".format(cmd))
         else:
             description_str = event.get("description")
             summary_str = event.get("summary")
