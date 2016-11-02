@@ -74,7 +74,6 @@ class CronCalendar:
 
     """
     tokenMatchRegExp=r"""^ \s* {} (?P<cmd_match>.+)"""
-    commentMatchRegExp=r"""^ \s* # .*"""
 
     def __init__(self,
                  conf,
@@ -143,46 +142,69 @@ class CronCalendar:
         cmd_end_dt_utc = utc_from_RFC3339(cmd_end_str)
 
         if not(dt_utctime_min <= cmd_start_dt_utc < dt_utctime_max) and not(dt_utctime_min < cmd_end_dt_utc <= dt_utctime_max):
-            logger.debug("Start_time and End_time are not inside boundaries(min<=dt<max)")
+            self.logger.debug("Start_time and End_time are not inside boundaries(min<=dt<max)")
             return
 
         description_str = event.get("description")
         summary_str = event.get("summary")
         if not description_str:
-            logger.debug("No command for [{}]".format(summary_str))
+            self.logger.debug("No command for [{}]".format(summary_str))
         else:
             startToken = self.conf.get("general", "start_token")
+            if_startToken = self.conf.get("general", "if_start_token")
+            else_startToken = self.conf.get("general", "else_start_token")
+
             stopToken = self.conf.get("general", "stop_token")
-            cmd_dicts = {'start':{'reg_exp':re.compile(self.tokenMatchRegExp.format(startToken), re.VERBOSE|re.IGNORECASE), 'value':[]},
-                         'end':{'reg_exp' :re.compile(self.tokenMatchRegExp.format(stopToken),  re.VERBOSE|re.IGNORECASE), 'value':[]},
-                         'coms':{'reg_exp' :re.compile(self.commentMatchRegExp, re.VERBOSE|re.IGNORECASE), 'value':[]},
-                         'none':{'reg_exp' :re.compile(self.tokenMatchRegExp.format(''), re.VERBOSE|re.IGNORECASE), 'value':[]}}
+            if_stopToken = self.conf.get("general", "if_stop_token")
+            else_stopToken = self.conf.get("general", "else_stop_token")
+
+            cmd_dicts = {'start':      {'reg_exp': re.compile(self.tokenMatchRegExp.format(startToken),      re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'if_start':   {'reg_exp': re.compile(self.tokenMatchRegExp.format(if_startToken),   re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'else_start': {'reg_exp': re.compile(self.tokenMatchRegExp.format(else_startToken), re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'end':        {'reg_exp': re.compile(self.tokenMatchRegExp.format(stopToken),       re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'if_end':     {'reg_exp': re.compile(self.tokenMatchRegExp.format(if_stopToken),    re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'else_end':   {'reg_exp': re.compile(self.tokenMatchRegExp.format(else_stopToken),  re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'coms':       {'reg_exp': re.compile(self.tokenMatchRegExp.format("\#"),             re.VERBOSE|re.IGNORECASE), 'value':[]},
+                         'none':       {'reg_exp': re.compile(self.tokenMatchRegExp.format(''),              re.VERBOSE|re.IGNORECASE), 'value':[]}}
+            keys_tuple=['start', 'if_start', 'else_start', 'end', 'if_end', 'else_end', 'coms', 'none'] # important to check none in the last position
+
             for line in description_str.split("\n"):
-                for cmd_key in cmd_dicts.keys():
-                    match = cmd_key['reg_exp'].match(line)
+                for cmd_key in keys_tuple:
+                    match = cmd_dicts[cmd_key]['reg_exp'].match(line)
                     if match:
-                        logger.debug("Line: '{}' - match".format(line))
+                        self.logger.debug("Line: '{}' - OK match '{}'".format(line, cmd_key))
 
                         # Append command to the right list
-                        cmd_dicts[cmd_key].['value'].append(match.group('cmd_match'))
+                        cmd_dicts[cmd_key]['value'].append(match.group('cmd_match'))
                         break
                     else:
-                        logger.debug("Line: '{}' - No match".format(line))
+                        self.logger.debug("Line: '{}' - NO match '{}'".format(line, cmd_key))
 
             if not self.dryrun:
-                for cmd_key in cmd_dicts.keys():
-                    if ((cmd_key == "start") or (cmd_key == "none")) and dt_utctime_min <= cmd_start_dt_utc < dt_utctime_max:
-                        logger.debug("Token '{}': time inside boundaries(min<=dt<max)".format(cmd_key))
+                # prepare test commands
+                if_cmd = {'start':{'if':"",'else':""},
+                          'end':{'if':"",'else':""}}
+                for cmd_key in ['start', 'end']:
+                    if cmd_dicts['if_'+cmd_key]['value']: # Check if if_start/if_end exist
+                        if_cmd[cmd_key]['if']   = cmd_dicts['if_'+cmd_key]['value'][0] + " && "
+                        if_cmd[cmd_key]['else'] = cmd_dicts['if_'+cmd_key]['value'][0] + " || "
+
+                for cmd_key in ['start', 'none', 'end', 'else_start', 'else_end']:
+                    if ((cmd_key == "start") or (cmd_key == "none") or ((cmd_key == "else_start") and (if_cmd['start']['else']!=""))) and (dt_utctime_min <= cmd_start_dt_utc < dt_utctime_max) and cmd_dicts[cmd_key]['value']:
+                        self.logger.debug("Token '{}': time inside boundaries(min<=dt<max)".format(cmd_key))
                         cmd_start_dt = from_RFC3339(cmd_start_str )
                         for cmd_value in cmd_dicts[cmd_key]['value']:
-                            logger.info("Token '{}': Programming from [{}] at {} command: [{}]".format(cmd_key,summary_str, cmd_start_dt, cmd_value))
-                            at.run_at(cmd_start_dt, cmd_value)
-                    elif (cmd_key == "end") and (dt_utctime_min < cmd_end_dt_utc <= dt_utctime_max):
-                        logger.debug("Token '{}': time inside boundaries(min<dt<=max)".format(cmd_key))
+                            command = if_cmd['start']['else' if (cmd_key.find('else') != -1) else 'if'] + cmd_value
+                            self.logger.info("Token '{}': Programming from [{}] at {} command: [{}]".format(cmd_key,summary_str, cmd_start_dt, command))
+                            at.run_at(cmd_start_dt, command)
+
+                    elif ((cmd_key == "end") or ((cmd_key == "else_end") and (if_cmd['end']['else']!=""))) and (dt_utctime_min < cmd_end_dt_utc <= dt_utctime_max) and cmd_dicts[cmd_key]['value']:
+                        self.logger.debug("Token '{}': time inside boundaries(min<dt<=max)".format(cmd_key))
                         cmd_end_dt = from_RFC3339(cmd_end_str )
                         for cmd_value in cmd_dicts[cmd_key]['value']:
-                            logger.info("Token '{}': Programming from [{}] at {} command: [{}]".format(cmd_key,summary_str, cmd_stop_dt, cmd_value))
-                            at.run_at(cmd_start_dt, cmd_value)
+                            command = if_cmd['end']['else' if (cmd_key.find('else') != -1) else 'if'] + cmd_value
+                            self.logger.info("Token '{}': Programming from [{}] at {} command: [{}]".format(cmd_key,summary_str, cmd_end_dt, command))
+                            at.run_at(cmd_end_dt, command)
         return
 
 
@@ -205,13 +227,13 @@ class CronCalendar:
         dt_utctime_min, dt_utctime_max = self.__get_query_utc_dt()
 
         if dt_utctime_min == dt_utctime_max:
-            logger.info("Nothing to query")
+            self.logger.info("Nothing to query")
         else:
 
             time_min = get_RFC3339(dt_utctime_min)
             time_max = get_RFC3339(dt_utctime_max)
 
-            logger.debug("Querying calendar from", time_min, "to", time_max)
+            self.logger.debug("Querying calendar from " + str(time_min) + " to " + str(time_max))
             req = self.service.events().list(calendarId=self.conf.get("general", "calendar_id"),
                                              singleEvents=True,  # Make sure regular events are expanded
                                              orderBy="startTime",
