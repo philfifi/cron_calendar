@@ -22,7 +22,7 @@
 import os
 import sys
 from cron_calendar_lib import CronCalendar
-import ConfigParser
+import configparser
 import signal
 
 def get_args(argv):
@@ -32,6 +32,7 @@ def get_args(argv):
     parser = argparse.ArgumentParser(description='Script ')
 
     parser.add_argument('-v', '--verbose', action="count",
+                        default=0,
                         dest="verbose_level",
                         help="Increase verbosity")
 
@@ -53,7 +54,7 @@ def main(argv):
 
     args = get_args(argv)
 
-    conf = ConfigParser.ConfigParser()
+    conf = configparser.ConfigParser()
     #CONFIGURATION FILE LOCATION **********************************
     #All of them are used. Not existing files ignored. Later item overrides former.
     if args.conf:

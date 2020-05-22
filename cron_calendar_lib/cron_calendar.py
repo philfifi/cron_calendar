@@ -137,14 +137,14 @@ class CronCalendar:
                 dt_utc = utc_from_RFC3339(start_str)
                 if not (dt_utctime_min <= dt_utc < dt_utctime_max):
                     if self.verbose_level >= 1:
-                        print "Start time not inside boundaries"
+                        print("Start time not inside boundaries")
                     continue
 
                 description_str = event.get("description")
                 summary_str = event.get("summary")
                 if not description_str:
                     if self.verbose_level >= 1:
-                        print "No command for [%s] at %s" % (summary_str, dt)
+                        print("No command for [%s] at %s" % (summary_str, dt))
                     continue
 
                 for line in description_str.split("\n"):
@@ -152,7 +152,7 @@ class CronCalendar:
                     if not cmd:
                         continue
                     if self.verbose_level >= 1:
-                        print "Programming from [%s] at %s command: [%s]" % (summary_str, dt, cmd)
+                        print("Programming from [%s] at %s command: [%s]" % (summary_str, dt, cmd))
                     if not self.dryrun:
                         at.run_at(dt, cmd)
 
@@ -165,14 +165,14 @@ class CronCalendar:
         dt_utctime_min, dt_utctime_max = self.__get_query_utc_dt()
 
         if dt_utctime_min == dt_utctime_max:
-            print "Nothing to query"
+            print("Nothing to query")
         else:
 
             time_min = get_RFC3339(dt_utctime_min)
             time_max = get_RFC3339(dt_utctime_max)
 
             if self.verbose_level >= 1:
-                print "Querying calendar from", time_min, "to", time_max
+                print("Querying calendar from", time_min, "to", time_max)
             req = self.service.events().list(calendarId=self.conf.get("general", "calendar_id"),
                                              singleEvents=True,  # Make sure regular events are expanded
                                              orderBy="startTime",

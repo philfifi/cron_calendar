@@ -25,7 +25,12 @@ setup(name='cron_calendar',
       author="Philippe LUC",
       author_email="pluc@pluc.fr",
       packages=["cron_calendar_lib"],
-
+      install_requires=[
+          'google-api-python-client',
+          'oauth2client',
+          'httplib2',
+          "gconf",
+      ],
 
       classifiers=[
         # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
