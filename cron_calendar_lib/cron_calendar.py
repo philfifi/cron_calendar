@@ -37,7 +37,7 @@ class AtApi:
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT
             )
-        p.stdin.write(cmd + b"\n")
+        p.stdin.write(cmd.encode("ascii") + b"\n")
         p.stdin.close()
         ret = p.wait()
         if ret != 0:

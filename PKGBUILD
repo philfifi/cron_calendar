@@ -1,6 +1,6 @@
 pkgname=cron_calendar
 pkgrel=1
-pkgver=r16.e557cce
+pkgver=r18.e627109
 pkgdesc='Get events from google calendar and execute commands'
 arch=('any')
 license=('GPL2')
