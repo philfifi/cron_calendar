@@ -1,0 +1,3 @@
+# lit le google calendar every 5 minutes
+*/5 * * * * domo /opt/cron_calendar/bin/cron_calendar
+
